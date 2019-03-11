@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from selenium import webdriver
 from selenium.webdriver import ChromeOptions
 import os
@@ -9,20 +10,20 @@ import threading
 import random
 import platform
 from os import path
-
+import zipfile
 from subprocess import run
 import datetime
 
 fav_url = []  # 全局变量，用来存储失效的微博url
 del_count = 0  # 统计一共删除了多少条失效微博
+
+#不同的chrome版本对应不同的chromedriver版本
 driver_version = {"69": "2.41", "68": "2.40", "67": "2.40", "66": "2.40", "65": "2.38",
                   "64": "2.37", "63": "2.36", "62": "2.34", "61": "2.33", "60": "2.33",
                   "59": "2.32", "58": "2.29", "57": "2.28", "56": "2.27", "55": "2.25",
                   "54": "2.27", "53": "2.25", "52": "2.24", "51": "2.23", "50": "2.21",
                   "49": "2.22", "48": "2.20", "47": "2.19", "46": "2.18", "45": "2.13",
                   "44": "2.19", "43": "2.17", "42": "2.15", "41": "2.13", "40": "2.12"}
-
-import zipfile
 
 
 def un_zip(file_name):
@@ -61,27 +62,6 @@ def get_version_win():
     return version
 
 
-# def pwd_input_win():
-#     import msvcrt, sys
-#     chars = []
-#     while True:
-#         try:
-#             newChar = msvcrt.getch().decode(encoding="utf-8")
-#         except:
-#             return input("你很可能不是在cmd命令行下运行，密码输入将不能隐藏:")
-#         if newChar in '\r\n': # 如果是换行，则输入结束
-#              break
-#         elif newChar == '\b': # 如果是退格，则删除密码末尾一位并且删除一个星号
-#              if chars:
-#                  del chars[-1]
-#                  msvcrt.putch('\b'.encode(encoding='utf-8')) # 光标回退一格
-#                  msvcrt.putch( ' '.encode(encoding='utf-8')) # 输出一个空格覆盖原来的星号
-#                  msvcrt.putch('\b'.encode(encoding='utf-8')) # 光标回退一格准备接受新的输入
-#         else:
-#             chars.append(newChar)
-#             msvcrt.putch('*'.encode(encoding='utf-8')) # 显示为星号
-#     return (''.join(chars) )
-
 def weibo_login_mac(username, password):
     cur_path = os.getcwd() + '/chromedriver'
     """mac下手动填写Chrome位置"""
@@ -99,14 +79,13 @@ def weibo_login_mac(username, password):
 
     time.sleep(1)
     driver.find_element_by_id("loginAction").click()
-    time.sleep(2)
+    time.sleep(3)
     return driver
 
 
 def weibo_login_win(username, password):
     cur_path = os.getcwd() + '\chromedriver'
 
-    print(cur_path)
     """win下手动填写Chrome位置"""
 
     opts = ChromeOptions()
@@ -122,7 +101,7 @@ def weibo_login_win(username, password):
 
     time.sleep(1)
     driver.find_element_by_id("loginAction").click()
-    time.sleep(2)
+    time.sleep(3)
     return driver
 
 
@@ -140,13 +119,12 @@ def dl_driver_mac():
     if int(version[0]) <= 69:
         chrome_version = driver_version[version[0]]
     else:
-        chrome_version = version[0] + '.' + version[1] + version[2]
+        chrome_version = version[0] + '.' + version[1] + '.' + version[2]
 
     for item in result:
         if chrome_version in item:
             flag = item
             break
-
     """http://npm.taobao.org/mirrors/chromedriver/72.0.3626.69/chromedriver_mac64.zip"""
     print("--------------正在下载驱动--------------")
     os.system(
@@ -180,8 +158,7 @@ def dl_driver_win():
             break
 
     print("--------------正在下载驱动--------------")
-    print("curl -O -L http://npm.taobao.org/mirrors/chromedriver/{0}/chromedriver_win32.zip".format(
-        flag))
+
     run("curl -O -L http://npm.taobao.org/mirrors/chromedriver/{0}/chromedriver_win32.zip".format(
         flag), shell=True)
 
@@ -207,40 +184,48 @@ def get_cancel_list(driver, page_list):
 
 # 避免过快访问导致短时间被封
 @time_count
-def cancel_slow(driver, count=1):
+def del_slowly(driver, count=1):
     global del_count
     driver.get("https://weibo.cn/fav?page=1")
+    # pat_n是用来匹配多少页数的
     pat_n = re.compile(r'\d+/(\d+)[\u4e00-\u9fa5]</div>')
-    pat = re.compile(r'<div>[\u4e00-\u9fa5]+<br /><a href="(.+?)" class="cc">')
+
+    # pat1是直接无效的
+    pat1 = re.compile(r'该微博已被删除.+?/celfav/(.+?)" class="cc">取消收藏')
+    # pat2是间接转发无效的
+    pat2 = re.compile(r'此微博已被作者删除.+?/celfav/(.+?)" class="cc">取消收藏</a>?')
+
     page_list = pat_n.findall(driver.page_source)
     # 只有一页收藏的情况
     if page_list == []:
         url = "https://weibo.cn/fav?page=1"
         driver.get(url)
-        result = pat.findall(driver.page_source)
+        result = pat1.findall(driver.page_source) + pat2.findall(driver.page_source)
+
         if len(result) == 0:
             return
         else:
             for url_str in result:
-                driver.get(url_str.replace("celfav", "celFavC"))
+                driver.get("https://weibo.cn/fav/celFavC/{0}".format(url_str))
                 del_count += 1
                 page_num = int(pat_n.findall(driver.page_source)[0])
                 time.sleep(random.uniform(0.5, 1))
             return
 
+    # 不止一页收藏的情况
     else:
         page_num = int(page_list[0])
     while (1):
         if count <= page_num:
             url = "https://weibo.cn/fav?page={0}".format(count)
             driver.get(url)
-            result = pat.findall(driver.page_source)
+            result = pat1.findall(driver.page_source) + pat2.findall(driver.page_source)
             if len(result) == 0:
                 count += 1
                 time.sleep(1.5)
                 continue
             for url_str in result:
-                driver.get(url_str.replace("celfav", "celFavC"))
+                driver.get("https://weibo.cn/fav/celFavC/{0}".format(url_str))
                 del_count += 1
                 page_num = int(pat_n.findall(driver.page_source)[0])
                 time.sleep(random.uniform(0.5, 1))
@@ -281,24 +266,27 @@ def main():
 def run_on_mac():
     username = input("请输入账号：")
     password = getpass.getpass("请输入密码:(密码将自动隐藏)")
-    page = input("请输入从第几页开始清除：(直接按回车则默认从第一页开始)")
+    page = input("请输入从第几页开始清除(直接按回车则默认从第一页开始):")
     if page == "":
         count = 1
     else:
         count = int(page)
     # 如果没有驱动，自动下载
+
     if not os.path.exists(os.getcwd() + '/chromedriver_mac64.zip'):
         dl_driver_mac()
+
     driver = weibo_login_mac(username, password)
-    cancel_slow(driver, count)
-    print("一共有{0}条收藏失效微博,已全部清除\n".format(del_count))
+    del_slowly(driver, count)
+    print("一共有{0}条收藏失效微博,已全部清除～\n".format(del_count))
+    a = input("请按回车结束本程序。感谢使用～\n")
     driver.quit()
 
 
 def run_on_win():
     username = input("请输入账号：")
     password = getpass.getpass("请输入密码:(密码将自动隐藏)")
-    page = input("请输入从第几页开始清除：(直接按回车则默认从第一页开始)")
+    page = input("请输入从第几页开始清除(直接按回车则默认从第一页开始):")
     if page == "":
         count = 1
     else:
@@ -307,8 +295,9 @@ def run_on_win():
     if not os.path.exists(os.getcwd() + '\chromedriver_win32.zip'):
         dl_driver_win()
     driver = weibo_login_win(username, password)
-    cancel_slow(driver, count)
-    print("一共有{0}条收藏失效微博,已全部清除\n".format(del_count))
+    del_slowly(driver, count)
+    print("一共有{0}条收藏失效微博,已全部清除～\n".format(del_count))
+    a = input("请按回车结束本程序。感谢使用～\n")
     driver.quit()
 
 
