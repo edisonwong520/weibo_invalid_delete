@@ -5,6 +5,11 @@
 无需手动设置user_id和cookie，一键清除，可后台自动运行  
 用的selenuim，程序可自动根据Chrome浏览器版本自动下载对应的chromedriver驱动
 
+## 原理
+自动根据系统以及Chrome版本下载对应的chromedriver
+自动登陆微博
+爬取收藏页
+自动取消失效微博收藏
 
 ## 运行要求
 - 语言： python3
