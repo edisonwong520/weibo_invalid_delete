@@ -15,9 +15,9 @@ from subprocess import run
 import datetime
 
 fav_url = []  # 全局变量，用来存储失效的微博url
-del_count = 0  # 统计一共删除了多少条失效微博
-
-#不同的chrome版本对应不同的chromedriver版本
+del_fav_count = 0  # 统计一共删除了多少条失效的收藏微博
+del_re_count = 0  # 统计一共删除了多少条失效微博
+# 不同的chrome版本对应不同的chromedriver版本
 driver_version = {"69": "2.41", "68": "2.40", "67": "2.40", "66": "2.40", "65": "2.38",
                   "64": "2.37", "63": "2.36", "62": "2.34", "61": "2.33", "60": "2.33",
                   "59": "2.32", "58": "2.29", "57": "2.28", "56": "2.27", "55": "2.25",
@@ -182,10 +182,9 @@ def get_cancel_list(driver, page_list):
     fav_url = fav_url + cancel_list
 
 
-# 避免过快访问导致短时间被封
 @time_count
-def del_slowly(driver, count=1):
-    global del_count
+def del_fav(driver, count=1):
+    global del_fav_count
     driver.get("https://weibo.cn/fav?page=1")
     # pat_n是用来匹配多少页数的
     pat_n = re.compile(r'\d+/(\d+)[\u4e00-\u9fa5]</div>')
@@ -196,6 +195,7 @@ def del_slowly(driver, count=1):
     pat2 = re.compile(r'此微博已被作者删除.+?/celfav/(.+?)" class="cc">取消收藏</a>?')
 
     page_list = pat_n.findall(driver.page_source)
+
     # 只有一页收藏的情况
     if page_list == []:
         url = "https://weibo.cn/fav?page=1"
@@ -207,7 +207,7 @@ def del_slowly(driver, count=1):
         else:
             for url_str in result:
                 driver.get("https://weibo.cn/fav/celFavC/{0}".format(url_str))
-                del_count += 1
+                del_fav_count += 1
                 page_num = int(pat_n.findall(driver.page_source)[0])
                 time.sleep(random.uniform(0.5, 1))
             return
@@ -226,10 +226,11 @@ def del_slowly(driver, count=1):
                 continue
             for url_str in result:
                 driver.get("https://weibo.cn/fav/celFavC/{0}".format(url_str))
-                del_count += 1
+                del_fav_count += 1
+
                 page_num = int(pat_n.findall(driver.page_source)[0])
                 time.sleep(random.uniform(0.5, 1))
-            time.sleep(random.uniform(1, 2))
+            time.sleep(random.uniform(1, 2))  # 避免过快访问导致短时间被封,所以sleep
         else:
             break
 
@@ -257,48 +258,113 @@ def del_slowly(driver, count=1):
 
 
 def main():
-    if platform.system() == "Darwin":
-        run_on_mac()
-    elif platform.system() == "Windows":
-        run_on_win()
+    opt = load()
+    print("\n--------------一键清理正在启动--------------\n")
+    username = opt[0]
+    password = opt[1]
+    count = opt[-2]
+    if opt[-1] == "Darwin":
+        # 如果没有驱动，自动下载
 
+        if not os.path.exists(os.getcwd() + '/chromedriver_mac64.zip'):
+            dl_driver_mac()
+        driver = weibo_login_mac(username, password)
 
-def run_on_mac():
-    username = input("请输入账号：")
-    password = getpass.getpass("请输入密码:(密码将自动隐藏)")
-    page = input("请输入从第几页开始清除(直接按回车则默认从第一页开始):")
-    if page == "":
-        count = 1
-    else:
-        count = int(page)
-    # 如果没有驱动，自动下载
+    elif opt[-1] == "Windows":
+        # 如果没有驱动，自动下载
 
-    if not os.path.exists(os.getcwd() + '/chromedriver_mac64.zip'):
-        dl_driver_mac()
-
-    driver = weibo_login_mac(username, password)
-    del_slowly(driver, count)
-    print("一共有{0}条收藏失效微博,已全部清除～\n".format(del_count))
-    a = input("请按回车结束本程序。感谢使用～\n")
+        if not os.path.exists(os.getcwd() + '/chromedriver_mac64.zip'):
+            dl_driver_win()
+        driver = weibo_login_mac(username, password)
+    if opt[2] == 1:
+        del_fav(driver, count)
+        print("--------------已清除{0}条失效微博--------------\n".format(del_fav_count))
+    elif opt[2] == 2:
+        del_repost(driver, count)
+        print("--------------已清除{0}条失效微博--------------～\n".format(del_re_count))
+    a = input("--------------请按回车结束本程序。感谢使用～--------------")
     driver.quit()
 
 
-def run_on_win():
+# 读参数
+def load():
+    os = platform.system()
     username = input("请输入账号：")
     password = getpass.getpass("请输入密码:(密码将自动隐藏)")
-    page = input("请输入从第几页开始清除(直接按回车则默认从第一页开始):")
+
+    print("1.清理失效收藏微博请按1")
+    print("2.清理失效转发微博请按2")
+    num = int(input(""))
+    page = int(input("\n请输入从第几页开始清除(直接按回车则默认从第一页开始):"))
     if page == "":
-        count = 1
+        page = 1
+    return (username, password, num, page, os)
+
+
+# 删除失效微博
+@time_count
+def del_repost(driver, count=1):
+    global del_re_count
+    del_link = []  # 存储要删除微博的链接
+    driver.get("https://weibo.cn/")
+    page_code = driver.page_source
+    pat = re.compile(r'<a href="/(\d+)/profile">微博\[\d*\]')
+    # 找出微博id
+    id = pat.findall(page_code)[0]
+    time.sleep(1)
+    # 微博主页
+    driver.get("https://weibo.cn/{0}/profile".format(id))
+    # pat_n是用来匹配多少页数的
+    pat_n = re.compile(r'\d+/(\d+)[\u4e00-\u9fa5]</div>')
+    page_list = pat_n.findall(driver.page_source)
+
+    driver.get("https://weibo.cn/{0}/profile?page={1}".format(id, count))
+
+    pat = re.compile(r'抱歉，此微博已被作者删除。查看帮助.+?<a href="(.+?)" class="cc">删除')
+    pat2 = re.compile(r'.+<a href="(.+)')
+    # 只有一页微博的情况
+    if page_list == []:
+        result = pat.findall(driver.page_source)
+
+        for i in result:
+            del_link.append(pat2.findall(i)[0])
+
+        if len(del_link) == 0:
+            return
+        else:
+            for url_str in del_link:
+                url_list = re.split(r'[\?&]', url_str)
+                link = url_list[0] + r"?type=del&" + url_list[1] + r"&act=delc&" + url_list[2] + r"&" + url_list[3]
+                driver.get(link)
+                del_re_count += 1
+
+                time.sleep(random.uniform(0.5, 1))
+            return
+
+    # 不止一页微博的情况
     else:
-        count = int(page)
-    # 如果没有驱动，自动下载
-    if not os.path.exists(os.getcwd() + '\chromedriver_win32.zip'):
-        dl_driver_win()
-    driver = weibo_login_win(username, password)
-    del_slowly(driver, count)
-    print("一共有{0}条收藏失效微博,已全部清除～\n".format(del_count))
-    a = input("请按回车结束本程序。感谢使用～\n")
-    driver.quit()
+        page_num = int(page_list[0])
+    while (1):
+        if count <= page_num:
+            driver.get("https://weibo.cn/{0}/profile?page={1}".format(id, count))
+            result = pat.findall(driver.page_source)
+            del_link = []
+            for i in result:
+                del_link.append(pat2.findall(i)[0])
+
+            if len(del_link) == 0:
+                count += 1
+                time.sleep(1.5)
+                continue
+            for url_str in del_link:
+                url_list = re.split(r'[\?&;]', url_str)
+                link = url_list[0] + r"?type=del&" + url_list[1] + r"&act=delc&" + url_list[3] + r"&" + url_list[-1]
+                driver.get(link)
+                del_re_count += 1
+                time.sleep(random.uniform(0.5, 1))
+
+        else:
+            break
 
 
 if __name__ == "__main__":
