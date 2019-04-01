@@ -216,7 +216,7 @@ def del_fav(driver, count=1):
     else:
         page_num = int(page_list[0])
     while (1):
-        if count <= page_num:
+        if int(count) <= page_num:
             url = "https://weibo.cn/fav?page={0}".format(count)
             driver.get(url)
             result = pat1.findall(driver.page_source) + pat2.findall(driver.page_source)
@@ -224,37 +224,24 @@ def del_fav(driver, count=1):
                 count += 1
                 time.sleep(1.5)
                 continue
+            #start to delete
             for url_str in result:
                 driver.get("https://weibo.cn/fav/celFavC/{0}".format(url_str))
                 del_fav_count += 1
 
-                page_num = int(pat_n.findall(driver.page_source)[0])
                 time.sleep(random.uniform(0.5, 1))
+
+            try:
+                page_num = int(pat_n.findall(driver.page_source)[0])
+            except Exception as e:
+                print("--------------页面刷新错误，正在重新刷新--------------")
+                time.sleep(random.uniform(1.5))
+                url = "https://weibo.cn/fav?page={0}".format(count)
+                driver.get(url)
+                page_num = int(pat_n.findall(driver.page_source)[0])
             time.sleep(random.uniform(1, 2))  # 避免过快访问导致短时间被封,所以sleep
         else:
             break
-
-
-# # 多线程
-# def multi_thread(driver):
-#     thread = []
-#
-#     thr_num = 1
-#     # 获取页面总数
-#     driver.get("https://weibo.cn/fav?page=1")
-#     pat = re.compile(r'\d+/(\d+)[\u4e00-\u9fa5]</div>')
-#     page_num = int(pat.findall(driver.page_source)[0])
-#     # 把任务列表平均划分
-#     num_list = range(1, page_num + 1)
-#     block_len = int(page_num / thr_num)
-#     task_list = [num_list[i:i + block_len] for i in range(0, len(num_list), block_len)]
-#     for i in range(thr_num):
-#         t = threading.Thread(target=get_cancel_list(driver, task_list[i]))
-#         thread.append(t)
-#     for i in range(thr_num):
-#         thread[i].start()
-#     for i in range(thr_num):
-#         thread[i].join()
 
 
 def main():
@@ -296,11 +283,12 @@ def load():
     print("2.清理失效转发微博请按2")
     num = int(input(""))
     page = input("\n请输入从第几页开始清除(直接按回车则默认从第一页开始):")
-    if page == "":
+    if page == "" or page=="\n":
         page_num = 1
     else:
         page_num = int(page)
-    return (username, password, num, page, os)
+
+    return (username, password, num, page_num, os)
 
 
 # 删除失效微博
@@ -367,8 +355,6 @@ def del_repost(driver, count=1):
 
         else:
             break
-
-
 
 
 if __name__ == "__main__":
