@@ -295,9 +295,11 @@ def load():
     print("1.清理失效收藏微博请按1")
     print("2.清理失效转发微博请按2")
     num = int(input(""))
-    page = int(input("\n请输入从第几页开始清除(直接按回车则默认从第一页开始):"))
+    page = input("\n请输入从第几页开始清除(直接按回车则默认从第一页开始):")
     if page == "":
-        page = 1
+        page_num = 1
+    else:
+        page_num = int(page)
     return (username, password, num, page, os)
 
 
