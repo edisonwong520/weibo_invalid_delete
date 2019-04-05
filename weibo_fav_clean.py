@@ -6,7 +6,6 @@ import time
 import urllib.request
 import re
 import getpass
-import threading
 import random
 import platform
 from os import path
@@ -62,7 +61,7 @@ def get_version_win():
     return version
 
 
-def weibo_login_mac(username, password):
+def weibo_login(username, password):
     cur_path = os.getcwd() + '/chromedriver'
     """mac下手动填写Chrome位置"""
 
@@ -95,9 +94,9 @@ def weibo_login_win(username, password):
     driver.get("https://passport.weibo.cn/signin/login")
     time.sleep(1)
 
-    driver.find_element_by_id("loginName").send_keys(username)
+    driver.find_element_by_id("loginname").send_keys(username)
     time.sleep(1)
-    driver.find_element_by_id("loginPassword").send_keys(password)
+    driver.find_element_by_id("password").send_keys(password)
 
     time.sleep(1)
     driver.find_element_by_id("loginAction").click()
@@ -181,7 +180,8 @@ def get_cancel_list(driver, page_list):
             cancel_list.append(url.replace("celfav", "celFavC"))
     fav_url = fav_url + cancel_list
 
-#删除失效的收藏微博
+
+# 删除失效的收藏微博
 @time_count
 def del_fav(driver, count=1):
     global del_fav_count
@@ -224,7 +224,7 @@ def del_fav(driver, count=1):
                 count += 1
                 time.sleep(1.5)
                 continue
-            #start to delete
+            # start to delete
             for url_str in result:
                 driver.get("https://weibo.cn/fav/celFavC/{0}".format(url_str))
                 del_fav_count += 1
@@ -255,14 +255,14 @@ def main():
 
         if not os.path.exists(os.getcwd() + '/chromedriver_mac64.zip'):
             dl_driver_mac()
-        driver = weibo_login_mac(username, password)
+        driver = weibo_login(username, password)
 
     elif opt[-1] == "Windows":
         # 如果没有驱动，自动下载
 
         if not os.path.exists(os.getcwd() + '/chromedriver_mac64.zip'):
             dl_driver_win()
-        driver = weibo_login_mac(username, password)
+        driver = weibo_login(username, password)
     if opt[2] == 1:
         del_fav(driver, count)
         print("--------------已清除{0}条失效微博--------------\n".format(del_fav_count))
@@ -276,14 +276,19 @@ def main():
 # 读参数
 def load():
     os = platform.system()
-    username = input("请输入账号：")
-    password = getpass.getpass("请输入密码:(密码将自动隐藏)")
-
+    # username = input("请输入账号：")
+    # password = getpass.getpass("请输入密码:(密码将自动隐藏)")
+    username="770975084@qq.com"
+    password="013703025697"
     print("1.清理失效收藏微博请按1")
     print("2.清理失效转发微博请按2")
-    num = int(input(""))
-    page = input("\n请输入从第几页开始清除(直接按回车则默认从第一页开始):")
-    if page == "" or page=="\n":
+    # num = int(input(""))
+    # page = input("\n请输入从第几页开始清除(直接按回车则默认从第一页开始):")
+    num=1
+    page=1
+
+
+    if page == "" or page == "\n":
         page_num = 1
     else:
         page_num = int(page)
@@ -355,7 +360,5 @@ def del_repost(driver, count=1):
 
         else:
             break
-
-
 if __name__ == "__main__":
     main()
