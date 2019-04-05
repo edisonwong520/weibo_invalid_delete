@@ -181,7 +181,7 @@ def get_cancel_list(driver, page_list):
             cancel_list.append(url.replace("celfav", "celFavC"))
     fav_url = fav_url + cancel_list
 
-
+#删除失效的收藏微博
 @time_count
 def del_fav(driver, count=1):
     global del_fav_count
@@ -291,7 +291,7 @@ def load():
     return (username, password, num, page_num, os)
 
 
-# 删除失效微博
+# 删除失效的转发微博
 @time_count
 def del_repost(driver, count=1):
     global del_re_count
