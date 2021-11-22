@@ -278,8 +278,8 @@ def load():
     os = platform.system()
     # username = input("请输入账号：")
     # password = getpass.getpass("请输入密码:(密码将自动隐藏)")
-    username="770975084@qq.com"
-    password="013703025697"
+    username="1234@qq.com"
+    password="1234"
     print("1.清理失效收藏微博请按1")
     print("2.清理失效转发微博请按2")
     # num = int(input(""))
