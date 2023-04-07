@@ -56,3 +56,11 @@ $ python weibo_fav_clean.py
 ## 注意事项
 因为可能会出现登陆次数太频繁，导致几分钟内无法登陆的情况所以适当调整了运行时间  
 如果需要追求快速清空的，可以修改代码中的time.sleep(x)x的值，或者删除
+
+## 特别鸣谢SmartProxy全球代理  
+本人微博爬虫都是用这个来解决ip池的问题   
+SmartProxy全球代理 拥有1亿真实住宅IP资源，作为专业海外http代理商，覆盖全球城市，高匿稳定提供100%原生住宅IP，而且支持社交账户、电商平台、网络数据收集等服务。     
+伪装度相当高！搞跨境电商还可以用来tiktok养号    
+现在价格优惠，只要65折！  [购买链接](https://www.smartproxy.cn/regist?invite=EXFB71)    
+![image](https://user-images.githubusercontent.com/37662899/230563731-16583235-c8b2-4a8e-a6b5-b2708b910b69.png)
+
